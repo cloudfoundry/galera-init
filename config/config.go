@@ -8,37 +8,37 @@ import (
 )
 
 type Config struct {
-	LogFileLocation string `validate:"nonzero"`
-	PidFile         string `validate:"nonzero"`
-	Db              DBHelper
-	Manager         StartManager
-	Upgrader        Upgrader
+	LogFileLocation string       `yaml:"LogFileLocation" validate:"nonzero"`
+	PidFile         string       `yaml:"PidFile" validate:"nonzero"`
+	Db              DBHelper     `yaml:"Db"`
+	Manager         StartManager `yaml:"Manager"`
+	Upgrader        Upgrader     `yaml:"Upgrader"`
 }
 
 type DBHelper struct {
-	DaemonPath         string `validate:"nonzero"`
-	UpgradePath        string `validate:"nonzero"`
-	User               string `validate:"nonzero"`
-	Password           string
-	PreseededDatabases []PreseededDatabase
+	DaemonPath          string              `yaml:"DaemonPath" validate:"nonzero"`
+	UpgradePath         string              `yaml:"UpgradePath" validate:"nonzero"`
+	User                string              `yaml:"User" validate:"nonzero"`
+	Password            string              `yaml:"Password"`
+	PreseededDatabases  []PreseededDatabase `yaml:"PreseededDatabases"`
 }
 
 type StartManager struct {
-	StateFileLocation    string   `validate:"nonzero"`
-	MaxDatabaseSeedTries int      `validate:"nonzero"`
-	ClusterIps           []string `validate:"nonzero"`
-	MyIP                 string   `validate:"nonzero"`
+	StateFileLocation    string   `yaml:"StateFileLocation" validate:"nonzero"`
+	MaxDatabaseSeedTries int      `yaml:"MaxDatabaseSeedTries" validate:"nonzero"`
+	ClusterIps           []string `yaml:"ClusterIps" validate:"nonzero"`
+	MyIP                 string   `yaml:"MyIP" validate:"nonzero"`
 }
 
 type Upgrader struct {
-	PackageVersionFile      string `validate:"nonzero"`
-	LastUpgradedVersionFile string `validate:"nonzero"`
+	PackageVersionFile      string `yaml:"PackageVersionFile" validate:"nonzero"`
+	LastUpgradedVersionFile string `yaml:"LastUpgradedVersionFile" validate:"nonzero"`
 }
 
 type PreseededDatabase struct {
-	DBName   string `validate:"nonzero"`
-	User     string `validate:"nonzero"`
-	Password string
+	DBName   string `yaml:"DBName" validate:"nonzero"`
+	User     string `yaml:"User" validate:"nonzero"`
+	Password string `yaml:"Password"`
 }
 
 func (c Config) Validate() error {
