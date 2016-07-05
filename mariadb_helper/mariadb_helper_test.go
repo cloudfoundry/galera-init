@@ -13,6 +13,8 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-golang/lager/lagertest"
+	"io/ioutil"
+	"os"
 )
 
 var _ = Describe("MariaDBHelper", func() {
@@ -41,6 +43,15 @@ var _ = Describe("MariaDBHelper", func() {
 		}
 
 		logFile = "/log-file.log"
+
+		sqlFile1, _ := ioutil.TempFile(os.TempDir(), "fake_sql_file")
+		defer sqlFile1.Close()
+		sqlFile2, _ := ioutil.TempFile(os.TempDir(), "fake_sql_file")
+		defer sqlFile2.Close()
+
+		ioutil.WriteFile(sqlFile1.Name(), []byte("some fake query"), 755)
+		ioutil.WriteFile(sqlFile2.Name(), []byte("another fake query"), 755)
+
 		dbConfig = config.DBHelper{
 			DaemonPath:  "/mysqld",
 			UpgradePath: "/mysql_upgrade",
@@ -58,6 +69,7 @@ var _ = Describe("MariaDBHelper", func() {
 					Password: "password2",
 				},
 			},
+			PostStartSQLFiles: []string{sqlFile1.Name(), sqlFile2.Name()},
 		}
 	})
 
@@ -227,6 +239,15 @@ var _ = Describe("MariaDBHelper", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(testLogger.Buffer()).To(Say("No preseeded databases specified, skipping seeding."))
 			})
+		})
+	})
+
+	Describe("RunPostStartSQL", func() {
+		It("runs the contents of the specified files", func() {
+			sqlmock.ExpectExec("some fake query")
+			sqlmock.ExpectExec("another fake query")
+
+			helper.RunPostStartSQL()
 		})
 	})
 })

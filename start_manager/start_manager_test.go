@@ -38,6 +38,10 @@ var _ = Describe("StartManager", func() {
 		Expect(fakeDBHelper.SeedCallCount()).To(BeNumerically(">=", 1))
 	}
 
+	ensureRunPostStartSQLs := func() {
+		Expect(fakeDBHelper.RunPostStartSQLCallCount()).To(BeNumerically(">=", 1))
+	}
+
 	ensureStateFileContentIs := func(expected string) {
 		count := fakeOs.WriteStringToFileCallCount()
 		filename, contents := fakeOs.WriteStringToFileArgsForCall(count - 1)
@@ -256,6 +260,27 @@ var _ = Describe("StartManager", func() {
 		})
 	})
 
+	Describe("runPostStartSQL", func() {
+		BeforeEach(func() {
+			mgr = createManager(managerArgs{
+				NodeCount: 1,
+			})
+		})
+
+		Context("when running post start sql fails", func() {
+			var expectedErr error
+			BeforeEach(func() {
+				expectedErr = errors.New("post start sql failed")
+				fakeDBHelper.RunPostStartSQLReturns(expectedErr)
+			})
+
+			It("forwards the error", func() {
+				err := mgr.Execute()
+				Expect(err).To(Equal(expectedErr))
+			})
+		})
+	})
+
 	Context("When starting in single-node deployment", func() {
 
 		BeforeEach(func() {
@@ -269,11 +294,12 @@ var _ = Describe("StartManager", func() {
 				fakeOs.FileExistsReturns(false)
 			})
 
-			It("bootstraps, seeds databases and writes '"+SingleNode+"' to file", func() {
+			It("bootstraps, seeds databases, runs post start sql and writes '"+SingleNode+"' to file", func() {
 				err := mgr.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				ensureBootstrapWithStateFileContents(SingleNode)
 				ensureSeedDatabases()
+				ensureRunPostStartSQLs()
 			})
 		})
 
@@ -283,11 +309,12 @@ var _ = Describe("StartManager", func() {
 				fakeOs.ReadFileReturns(SingleNode, nil)
 			})
 
-			It("bootstraps, seeds databases and writes '"+SingleNode+"' to file", func() {
+			It("bootstraps, seeds databases, runs post start sql and writes '"+SingleNode+"' to file", func() {
 				err := mgr.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				ensureBootstrapWithStateFileContents(SingleNode)
 				ensureSeedDatabases()
+				ensureRunPostStartSQLs()
 			})
 		})
 	})
@@ -309,11 +336,12 @@ var _ = Describe("StartManager", func() {
 					fakeClusterHealthChecker.HealthyClusterReturns(false)
 				})
 
-				It("bootstraps, seeds databases and writes "+Clustered+" to file", func() {
+				It("bootstraps, seeds databases, runs post start sql and writes "+Clustered+" to file", func() {
 					err := mgr.Execute()
 					Expect(err).ToNot(HaveOccurred())
 					ensureBootstrapWithStateFileContents(Clustered)
 					ensureSeedDatabases()
+					ensureRunPostStartSQLs()
 				})
 			})
 
@@ -328,11 +356,12 @@ var _ = Describe("StartManager", func() {
 					fakeClusterHealthChecker.HealthyClusterReturns(false)
 				})
 
-				It("joins cluster, seeds databases, and writes '"+Clustered+"' to file", func() {
+				It("joins cluster, seeds databases, runs post start sql, and writes '"+Clustered+"' to file", func() {
 					err := mgr.Execute()
 					Expect(err).ToNot(HaveOccurred())
 					ensureJoin()
 					ensureSeedDatabases()
+					ensureRunPostStartSQLs()
 				})
 			})
 		})
@@ -351,11 +380,12 @@ var _ = Describe("StartManager", func() {
 					fakeOs.ReadFileReturns(fmt.Sprintf("\n\n     %s \n", Clustered), nil)
 				})
 
-				It("joins the cluster and seeds the databases", func() {
+				It("joins the cluster, runs post start sql and seeds the databases", func() {
 					err := mgr.Execute()
 					Expect(err).ToNot(HaveOccurred())
 					ensureJoin()
 					ensureSeedDatabases()
+					ensureRunPostStartSQLs()
 				})
 			})
 
@@ -364,11 +394,12 @@ var _ = Describe("StartManager", func() {
 					fakeOs.ReadFileReturns(Clustered, nil)
 				})
 
-				It("joins the cluster and seeds the databases", func() {
+				It("joins the cluster, runs post start sql and seeds the databases", func() {
 					err := mgr.Execute()
 					Expect(err).ToNot(HaveOccurred())
 					ensureJoin()
 					ensureSeedDatabases()
+					ensureRunPostStartSQLs()
 				})
 			})
 
@@ -377,11 +408,12 @@ var _ = Describe("StartManager", func() {
 					fakeOs.ReadFileReturns(NeedsBootstrap, nil)
 				})
 
-				It("joins cluster, seeds databases, and writes '"+Clustered+"' to file", func() {
+				It("joins cluster, seeds databases, runs post start sql, and writes '"+Clustered+"' to file", func() {
 					err := mgr.Execute()
 					Expect(err).NotTo(HaveOccurred())
 					ensureBootstrapWithStateFileContents(Clustered)
 					ensureSeedDatabases()
+					ensureRunPostStartSQLs()
 				})
 
 				Context("And one or more other nodes is reachable", func() {
@@ -393,11 +425,12 @@ var _ = Describe("StartManager", func() {
 						})
 					})
 
-					It("joins the cluster and seeds databases", func() {
+					It("joins the cluster, runs post start sql and seeds databases", func() {
 						err := mgr.Execute()
 						Expect(err).ToNot(HaveOccurred())
 						ensureJoin()
 						ensureSeedDatabases()
+						ensureRunPostStartSQLs()
 					})
 				})
 
@@ -409,11 +442,12 @@ var _ = Describe("StartManager", func() {
 						})
 					})
 
-					It("bootstraps, seeds databases, and writes '"+Clustered+"' to file", func() {
+					It("bootstraps, seeds databases, runs post start sql, and writes '"+Clustered+"' to file", func() {
 						err := mgr.Execute()
 						Expect(err).NotTo(HaveOccurred())
 						ensureBootstrapWithStateFileContents(Clustered)
 						ensureSeedDatabases()
+						ensureRunPostStartSQLs()
 					})
 				})
 			})
@@ -470,11 +504,12 @@ var _ = Describe("StartManager", func() {
 				fakeOs.ReadFileReturns(Clustered, nil)
 			})
 
-			It("seeds databases, bootstraps node 0 and writes '"+SingleNode+"' to file", func() {
+			It("seeds databases, runs post start sql, bootstraps node 0 and writes '"+SingleNode+"' to file", func() {
 				err := mgr.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				ensureBootstrapWithStateFileContents(SingleNode)
 				ensureSeedDatabases()
+				ensureRunPostStartSQLs()
 			})
 		})
 
@@ -488,11 +523,12 @@ var _ = Describe("StartManager", func() {
 				fakeOs.ReadFileReturns(SingleNode, nil)
 			})
 
-			It("seeds databases, bootstraps node 0 and writes '"+Clustered+"' to file", func() {
+			It("seeds databases, runs post start sql, bootstraps node 0 and writes '"+Clustered+"' to file", func() {
 				err := mgr.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				ensureBootstrapWithStateFileContents(Clustered)
 				ensureSeedDatabases()
+				ensureRunPostStartSQLs()
 			})
 		})
 	})

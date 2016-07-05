@@ -21,52 +21,58 @@ type FakeDBHelper struct {
 	StartMysqlInJoinStub        func() (*exec.Cmd, error)
 	startMysqlInJoinMutex       sync.RWMutex
 	startMysqlInJoinArgsForCall []struct{}
-	startMysqlInJoinReturns struct {
+	startMysqlInJoinReturns     struct {
 		result1 *exec.Cmd
 		result2 error
 	}
 	StartMysqlInBootstrapStub        func() (*exec.Cmd, error)
 	startMysqlInBootstrapMutex       sync.RWMutex
 	startMysqlInBootstrapArgsForCall []struct{}
-	startMysqlInBootstrapReturns struct {
+	startMysqlInBootstrapReturns     struct {
 		result1 *exec.Cmd
 		result2 error
 	}
 	StopMysqlStub        func() error
 	stopMysqlMutex       sync.RWMutex
 	stopMysqlArgsForCall []struct{}
-	stopMysqlReturns struct {
+	stopMysqlReturns     struct {
 		result1 error
 	}
 	StopStandaloneMysqlStub        func() error
 	stopStandaloneMysqlMutex       sync.RWMutex
 	stopStandaloneMysqlArgsForCall []struct{}
-	stopStandaloneMysqlReturns struct {
+	stopStandaloneMysqlReturns     struct {
 		result1 error
 	}
 	UpgradeStub        func() (output string, err error)
 	upgradeMutex       sync.RWMutex
 	upgradeArgsForCall []struct{}
-	upgradeReturns struct {
+	upgradeReturns     struct {
 		result1 string
 		result2 error
 	}
 	IsDatabaseReachableStub        func() bool
 	isDatabaseReachableMutex       sync.RWMutex
 	isDatabaseReachableArgsForCall []struct{}
-	isDatabaseReachableReturns struct {
+	isDatabaseReachableReturns     struct {
 		result1 bool
 	}
 	IsProcessRunningStub        func() bool
 	isProcessRunningMutex       sync.RWMutex
 	isProcessRunningArgsForCall []struct{}
-	isProcessRunningReturns struct {
+	isProcessRunningReturns     struct {
 		result1 bool
 	}
 	SeedStub        func() error
 	seedMutex       sync.RWMutex
 	seedArgsForCall []struct{}
-	seedReturns struct {
+	seedReturns     struct {
+		result1 error
+	}
+	RunPostStartSQLStub        func() error
+	runPostStartSQLMutex       sync.RWMutex
+	runPostStartSQLArgsForCall []struct{}
+	runPostStartSQLReturns     struct {
 		result1 error
 	}
 }
@@ -294,6 +300,30 @@ func (fake *FakeDBHelper) SeedCallCount() int {
 func (fake *FakeDBHelper) SeedReturns(result1 error) {
 	fake.SeedStub = nil
 	fake.seedReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeDBHelper) RunPostStartSQL() error {
+	fake.runPostStartSQLMutex.Lock()
+	fake.runPostStartSQLArgsForCall = append(fake.runPostStartSQLArgsForCall, struct{}{})
+	fake.runPostStartSQLMutex.Unlock()
+	if fake.RunPostStartSQLStub != nil {
+		return fake.RunPostStartSQLStub()
+	} else {
+		return fake.runPostStartSQLReturns.result1
+	}
+}
+
+func (fake *FakeDBHelper) RunPostStartSQLCallCount() int {
+	fake.runPostStartSQLMutex.RLock()
+	defer fake.runPostStartSQLMutex.RUnlock()
+	return len(fake.runPostStartSQLArgsForCall)
+}
+
+func (fake *FakeDBHelper) RunPostStartSQLReturns(result1 error) {
+	fake.RunPostStartSQLStub = nil
+	fake.runPostStartSQLReturns = struct {
 		result1 error
 	}{result1}
 }

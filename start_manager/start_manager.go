@@ -121,6 +121,11 @@ func (m *startManager) Execute() error {
 		return err
 	}
 
+	err = m.runPostStartSQL()
+	if err != nil {
+		return err
+	}
+
 	m.writeStringToFile(newNodeState)
 
 	return err
@@ -262,5 +267,16 @@ func (m *startManager) seedDatabases() error {
 	}
 
 	m.logger.Info("Seeding databases succeeded.")
+	return nil
+}
+
+func (m *startManager) runPostStartSQL() error {
+	err := m.mariaDBHelper.RunPostStartSQL()
+	if err != nil {
+		m.logger.Info(fmt.Sprintf("There was a problem running post start sql: '%s'", err.Error()))
+		return err
+	}
+
+	m.logger.Info("Post start sql succeeded.")
 	return nil
 }

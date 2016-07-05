@@ -21,6 +21,7 @@ type DBHelper struct {
 	User               string              `yaml:"User" validate:"nonzero"`
 	Password           string              `yaml:"Password"`
 	PreseededDatabases []PreseededDatabase `yaml:"PreseededDatabases"`
+	PostStartSQLFiles  []string            `yaml:"PostStartSQLFiles"`
 }
 
 type StartManager struct {
