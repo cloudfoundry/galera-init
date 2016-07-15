@@ -854,6 +854,10 @@ then
 
         if [ ! ${DISABLE_SST:=0} -eq 0 ]
         then
+            if [ -n "${INTERRUPT_NOTIFY_CMD:=}" ]
+            then
+              ${INTERRUPT_NOTIFY_CMD}
+            fi
             wsrep_log_error "##############################################################################"
             wsrep_log_error "SST disabled due to danger of data loss. Verify data and bootstrap the cluster"
             wsrep_log_error "##############################################################################"
