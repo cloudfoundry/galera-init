@@ -262,7 +262,7 @@ func (m MariaDBHelper) ManageReadOnlyUser() error {
 
 func (m MariaDBHelper) grantUserReadOnly(db *sql.DB) error {
 	createUserQuery := fmt.Sprintf(
-		"GRANT SELECT, PROCESS ON *.* TO '%s' IDENTIFIED BY '%s'",
+		"GRANT SELECT, PROCESS, SHOW VIEW, TRIGGER, LOCK TABLES, RELOAD, FILE ON *.* TO '%s' IDENTIFIED BY '%s'",
 		m.config.ReadOnlyUser,
 		m.config.ReadOnlyPassword,
 	)
