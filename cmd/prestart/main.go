@@ -102,6 +102,7 @@ func newRunner(cfg *config.Config) ifrit.Runner {
 
 	ClusterHealthChecker := cluster_health_checker.NewClusterHealthChecker(
 		cfg.Manager.ClusterIps,
+		cfg.Manager.ClusterProbeTimeout,
 		cfg.Logger,
 	)
 
