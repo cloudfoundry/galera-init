@@ -66,6 +66,7 @@ func main() {
 
 	galeraHelper := cluster_health_checker.NewClusterHealthChecker(
 		rootConfig.Manager.ClusterIps,
+		rootConfig.Manager.ClusterProbeTimeout,
 		logger,
 	)
 

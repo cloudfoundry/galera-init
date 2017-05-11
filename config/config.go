@@ -32,6 +32,7 @@ type StartManager struct {
 	DatabaseStartupTimeout int      `yaml:"DatabaseStartupTimeout" validate:"nonzero"`
 	ClusterIps             []string `yaml:"ClusterIps" validate:"nonzero"`
 	MyIP                   string   `yaml:"MyIP" validate:"nonzero"`
+	ClusterProbeTimeout    int      `yaml:"ClusterProbeTimeout" validate:"nonzero"`
 }
 
 type Upgrader struct {
