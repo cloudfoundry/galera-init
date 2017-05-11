@@ -129,6 +129,7 @@ var _ = Describe("Config", func() {
 			It("returns an error if Manager.DatabaseStartupTimeout is blank", isRequiredField("Manager.DatabaseStartupTimeout"))
 			It("returns an error if Manager.MyIP is blank", isRequiredField("Manager.MyIP"))
 			It("returns an error if Manager.ClusterIps is blank", isRequiredField("Manager.ClusterIps"))
+			It("returns an error if Manager.ClusterProbeTimeout is blank", isRequiredField("Manager.ClusterProbeTimeout"))
 		})
 
 		Describe("DBHelper", func() {

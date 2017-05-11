@@ -26,3 +26,4 @@ Manager:
   ClusterIps: []
   # How many times to attempt database seeding before it fails
   MaxDatabaseSeedTries: 1
+  ClusterProbeTimeout: 13
