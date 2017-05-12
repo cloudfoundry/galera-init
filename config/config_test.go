@@ -34,6 +34,7 @@ var _ = Describe("Config", func() {
 						"1.1.1.3",
 					},
 					DatabaseStartupTimeout: 600,
+					ClusterProbeTimeout: 10,
 				},
 				Db: config.DBHelper{
 					DaemonPath:  "testDaemonPath",
