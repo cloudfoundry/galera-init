@@ -167,12 +167,17 @@ func (m MariaDBHelper) IsDatabaseReachable() bool {
 	m.logger.Info(fmt.Sprintf("Determining if database is reachable"))
 
 	db, err := OpenDBConnection(m.config)
+	m.logger.Info("1")
+
 	if err != nil {
+	m.logger.Info("2")
 		m.logger.Info("database not reachable", lager.Data{"err": err})
 		return false
 	}
+	m.logger.Info("3")
 	defer CloseDBConnection(db)
 
+	m.logger.Info("4")
 	var (
 		unused string
 		value  string
@@ -180,9 +185,11 @@ func (m MariaDBHelper) IsDatabaseReachable() bool {
 
 	err = db.QueryRow(`SHOW GLOBAL VARIABLES LIKE 'wsrep\_on'`).Scan(&unused, &value)
 	if err != nil {
+	m.logger.Info("5")
 		return false
 	}
 
+	m.logger.Info("6")
 	if value == "OFF" {
 		m.logger.Info(fmt.Sprintf("Database is reachable, Galera is off"))
 		return true

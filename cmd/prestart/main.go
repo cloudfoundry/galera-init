@@ -12,7 +12,24 @@ import (
 	"github.com/cloudfoundry/mariadb_ctrl/upgrader"
 )
 
+manager = NewFakeManager()
+preStarter = NewPreStarter(manager)
+preStarter.preStart
+
+
 func main() {
+
+	manager = NewRealManager()
+	preStarter = NewPreStarter(manager, os.Args)
+	preStarter.preStart()
+
+	one, two, three, four := managerSetup(cfg)
+	startManger := managerCreation(one, two three, four, cfg)
+	preStarter = NewPreStarter(startManager, os.Args)
+	// preStarter = NewPreStarter(fakeManager, os.Args)
+	preStarter.start()
+	
+
 	cfg, err := config.NewConfig(os.Args)
 	if err != nil {
 		cfg.Logger.Fatal("Error creating config", err)
@@ -69,6 +86,10 @@ func managerSetup(cfg *config.Config) start_manager.StartManager {
 		ClusterHealthChecker,
 	)
 
+	return OsHelper, DBHelper, Upgrader, ClusterHealthChecker, NodeStarter
+}
+
+func managerCreation(take 4 args, cfg) {
 	NodeStartManager := start_manager.New(
 		OsHelper,
 		cfg.Manager,
