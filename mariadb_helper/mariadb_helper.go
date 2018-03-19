@@ -93,7 +93,7 @@ func (m MariaDBHelper) StartMysqldInStandAlone() {
 
 func (m MariaDBHelper) StartMysqldInJoin() (*exec.Cmd, error) {
 	m.logger.Info("Starting mysqld with 'join'.")
-	cmd, err := m.startMysqldAsChildProcess()
+	cmd, err := m.startMysqldAsChildProcess("--defaults-file=/var/vcap/jobs/mysql/config/my.cnf")
 
 	if err != nil {
 		m.logger.Info(fmt.Sprintf("Error starting mysqld: %s", err.Error()))
@@ -104,7 +104,7 @@ func (m MariaDBHelper) StartMysqldInJoin() (*exec.Cmd, error) {
 
 func (m MariaDBHelper) StartMysqldInBootstrap() (*exec.Cmd, error) {
 	m.logger.Info("Starting mysql with 'bootstrap'.")
-	cmd, err := m.startMysqldAsChildProcess("--wsrep-new-cluster")
+	cmd, err := m.startMysqldAsChildProcess("--defaults-file=/var/vcap/jobs/mysql/config/my.cnf", "--wsrep-new-cluster")
 
 	if err != nil {
 		m.logger.Info(fmt.Sprintf("Error starting node with 'bootstrap': %s", err.Error()))
@@ -158,8 +158,7 @@ func (m MariaDBHelper) startMysqldAsChildProcess(mysqlArgs ...string) (*exec.Cmd
 func (m MariaDBHelper) Upgrade() (output string, err error) {
 	return m.osHelper.RunCommand(
 		m.config.UpgradePath,
-		fmt.Sprintf("-u%s", m.config.User),
-		fmt.Sprintf("-p%s", m.config.Password),
+	"--defaults-file=/var/vcap/jobs/mysql/config/mylogin.cnf",
 	)
 }
 

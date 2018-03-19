@@ -7,19 +7,19 @@ mode=$1
 case "$mode" in
   'stop')
       echo "Stopping the cluster"
-      /var/vcap/packages/mariadb/support-files/mysql.server stop > /dev/null 2>&1  &
+      /var/vcap/packages/mariadb/support-files/mysql.server stop --pid-file=/var/vcap/sys/run/mysql/mysql.pid > /dev/null 2>&1  &
       ;;
 
   'bootstrap')
       # Bootstrap the cluster, start the first node
       # that initiate the cluster
       echo "Bootstrapping the cluster"
-      /var/vcap/packages/mariadb/bin/mysqld_safe --wsrep-new-cluster &
+      /var/vcap/packages/mariadb/bin/mysqld_safe --defaults-file=/var/vcap/jobs/mysql/config/my.cnf --wsrep-new-cluster &
       ;;
 
   'stand-alone')
       echo "Starting the node in stand-alone mode"
-      /var/vcap/packages/mariadb/bin/mysqld_safe --wsrep-on=OFF --wsrep-desync=ON --wsrep-OSU-method=RSU --wsrep-provider='none' --skip-networking &
+      /var/vcap/packages/mariadb/bin/mysqld_safe --defaults-file=/var/vcap/jobs/mysql/config/my.cnf --wsrep-on=OFF --wsrep-desync=ON --wsrep-OSU-method=RSU --wsrep-provider='none' --skip-networking &
       ;;
 
   'status')
