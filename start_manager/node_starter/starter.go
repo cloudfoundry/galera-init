@@ -6,13 +6,14 @@ import (
 	"os/exec"
 	"time"
 
+	"io/ioutil"
+	"strings"
+
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/galera-init/cluster_health_checker"
 	"github.com/cloudfoundry/galera-init/config"
 	"github.com/cloudfoundry/galera-init/db_helper"
 	"github.com/cloudfoundry/galera-init/os_helper"
-	"io/ioutil"
-	"strings"
 )
 
 const (
@@ -26,6 +27,7 @@ const (
 
 type Starter interface {
 	StartNodeFromState(string) (string, error)
+	BlockingStartNodeFromState(string) (string, chan error, error)
 	GetMysqlCmd() (*exec.Cmd, error)
 }
 
@@ -104,6 +106,58 @@ func (s *starter) StartNodeFromState(state string) (string, error) {
 	}
 
 	return newNodeState, nil
+}
+
+func (s *starter) BlockingStartNodeFromState(state string) (string, chan error, error) {
+	var newNodeState string
+	var err error
+	var mysqldChan chan error
+
+	switch state {
+	case SingleNode:
+		mysqldChan, err = s.bootstrapNode()
+		newNodeState = SingleNode
+	case NeedsBootstrap:
+		if s.clusterHealthChecker.HealthyCluster() {
+			mysqldChan, err = s.joinCluster()
+		} else {
+			mysqldChan, err = s.bootstrapNode()
+		}
+		newNodeState = Clustered
+	case Clustered:
+		mysqldChan, err = s.joinCluster()
+		newNodeState = Clustered
+	default:
+		err = fmt.Errorf("Unsupported state file contents: %s", state)
+	}
+	if err != nil {
+		return "", mysqldChan, err
+	}
+	if mysqldChan == nil {
+		return "", mysqldChan, errors.New("Starting mysql failed, no channel created - exiting")
+	}
+
+	err = s.waitForDatabaseToAcceptConnections(mysqldChan)
+	if err != nil {
+		return "", mysqldChan, err
+	}
+
+	err = s.seedDatabases()
+	if err != nil {
+		return "", mysqldChan, err
+	}
+
+	err = s.runPostStartSQL()
+	if err != nil {
+		return "", mysqldChan, err
+	}
+
+	err = s.runTestDatabaseCleanup()
+	if err != nil {
+		return "", mysqldChan, err
+	}
+
+	return newNodeState, mysqldChan, nil
 }
 
 func (s *starter) GetMysqlCmd() (*exec.Cmd, error) {

@@ -22,6 +22,21 @@ type FakeStarter struct {
 		result1 string
 		result2 error
 	}
+	BlockingStartNodeFromStateStub        func(string) (string, chan error, error)
+	blockingStartNodeFromStateMutex       sync.RWMutex
+	blockingStartNodeFromStateArgsForCall []struct {
+		arg1 string
+	}
+	blockingStartNodeFromStateReturns struct {
+		result1 string
+		result2 chan error
+		result3 error
+	}
+	blockingStartNodeFromStateReturnsOnCall map[int]struct {
+		result1 string
+		result2 chan error
+		result3 error
+	}
 	GetMysqlCmdStub        func() (*exec.Cmd, error)
 	getMysqlCmdMutex       sync.RWMutex
 	getMysqlCmdArgsForCall []struct{}
@@ -88,6 +103,60 @@ func (fake *FakeStarter) StartNodeFromStateReturnsOnCall(i int, result1 string, 
 	}{result1, result2}
 }
 
+func (fake *FakeStarter) BlockingStartNodeFromState(arg1 string) (string, chan error, error) {
+	fake.blockingStartNodeFromStateMutex.Lock()
+	ret, specificReturn := fake.blockingStartNodeFromStateReturnsOnCall[len(fake.blockingStartNodeFromStateArgsForCall)]
+	fake.blockingStartNodeFromStateArgsForCall = append(fake.blockingStartNodeFromStateArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("BlockingStartNodeFromState", []interface{}{arg1})
+	fake.blockingStartNodeFromStateMutex.Unlock()
+	if fake.BlockingStartNodeFromStateStub != nil {
+		return fake.BlockingStartNodeFromStateStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	return fake.blockingStartNodeFromStateReturns.result1, fake.blockingStartNodeFromStateReturns.result2, fake.blockingStartNodeFromStateReturns.result3
+}
+
+func (fake *FakeStarter) BlockingStartNodeFromStateCallCount() int {
+	fake.blockingStartNodeFromStateMutex.RLock()
+	defer fake.blockingStartNodeFromStateMutex.RUnlock()
+	return len(fake.blockingStartNodeFromStateArgsForCall)
+}
+
+func (fake *FakeStarter) BlockingStartNodeFromStateArgsForCall(i int) string {
+	fake.blockingStartNodeFromStateMutex.RLock()
+	defer fake.blockingStartNodeFromStateMutex.RUnlock()
+	return fake.blockingStartNodeFromStateArgsForCall[i].arg1
+}
+
+func (fake *FakeStarter) BlockingStartNodeFromStateReturns(result1 string, result2 chan error, result3 error) {
+	fake.BlockingStartNodeFromStateStub = nil
+	fake.blockingStartNodeFromStateReturns = struct {
+		result1 string
+		result2 chan error
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *FakeStarter) BlockingStartNodeFromStateReturnsOnCall(i int, result1 string, result2 chan error, result3 error) {
+	fake.BlockingStartNodeFromStateStub = nil
+	if fake.blockingStartNodeFromStateReturnsOnCall == nil {
+		fake.blockingStartNodeFromStateReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 chan error
+			result3 error
+		})
+	}
+	fake.blockingStartNodeFromStateReturnsOnCall[i] = struct {
+		result1 string
+		result2 chan error
+		result3 error
+	}{result1, result2, result3}
+}
+
 func (fake *FakeStarter) GetMysqlCmd() (*exec.Cmd, error) {
 	fake.getMysqlCmdMutex.Lock()
 	ret, specificReturn := fake.getMysqlCmdReturnsOnCall[len(fake.getMysqlCmdArgsForCall)]
@@ -136,6 +205,8 @@ func (fake *FakeStarter) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.startNodeFromStateMutex.RLock()
 	defer fake.startNodeFromStateMutex.RUnlock()
+	fake.blockingStartNodeFromStateMutex.RLock()
+	defer fake.blockingStartNodeFromStateMutex.RUnlock()
 	fake.getMysqlCmdMutex.RLock()
 	defer fake.getMysqlCmdMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

@@ -18,6 +18,7 @@ import (
 
 type StartManager interface {
 	Execute() error
+	BlockingExecute() error
 	GetMysqlCmd() (*exec.Cmd, error)
 	Shutdown()
 }
@@ -97,6 +98,59 @@ func (m *startManager) Execute() error {
 	}
 
 	return nil
+}
+
+func (m *startManager) BlockingExecute() error {
+	var newNodeState string
+	var mysqldChan chan error
+	var err error
+
+	if m.dbHelper.IsProcessRunning() {
+		m.logger.Info("mysqld process is already running, shutting down before continuing")
+		m.Shutdown()
+	}
+
+	needsUpgrade, err := m.upgrader.NeedsUpgrade()
+	if err != nil {
+		m.logger.Info("Failed to determine upgrade status with error", lager.Data{"err": err.Error()})
+		return err
+	}
+	if needsUpgrade {
+		err = m.upgrader.Upgrade()
+		if err != nil {
+			m.logger.Info("Failed during upgrade", lager.Data{"err": err.Error()})
+			return err
+		}
+	}
+
+	m.logger.Info("Determining bootstrap procedure", lager.Data{
+		"ClusterIps":    m.config.ClusterIps,
+		"BootstrapNode": m.config.BootstrapNode,
+	})
+
+	currentState, err := m.getCurrentNodeState()
+	if err != nil {
+		return err
+	}
+
+	newNodeState, mysqldChan, err = m.startCaller.BlockingStartNodeFromState(currentState)
+	if err != nil {
+		return err
+	}
+
+	err = m.writeStringToFile(newNodeState)
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case msg := <-mysqldChan:
+			return msg
+		default:
+			continue
+		}
+	}
 }
 
 func (m *startManager) getCurrentNodeState() (string, error) {

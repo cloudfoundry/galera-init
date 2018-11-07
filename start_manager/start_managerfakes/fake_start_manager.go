@@ -18,6 +18,15 @@ type FakeStartManager struct {
 	executeReturnsOnCall map[int]struct {
 		result1 error
 	}
+	BlockingExecuteStub        func() error
+	blockingExecuteMutex       sync.RWMutex
+	blockingExecuteArgsForCall []struct{}
+	blockingExecuteReturns     struct {
+		result1 error
+	}
+	blockingExecuteReturnsOnCall map[int]struct {
+		result1 error
+	}
 	GetMysqlCmdStub        func() (*exec.Cmd, error)
 	getMysqlCmdMutex       sync.RWMutex
 	getMysqlCmdArgsForCall []struct{}
@@ -72,6 +81,46 @@ func (fake *FakeStartManager) ExecuteReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.executeReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeStartManager) BlockingExecute() error {
+	fake.blockingExecuteMutex.Lock()
+	ret, specificReturn := fake.blockingExecuteReturnsOnCall[len(fake.blockingExecuteArgsForCall)]
+	fake.blockingExecuteArgsForCall = append(fake.blockingExecuteArgsForCall, struct{}{})
+	fake.recordInvocation("BlockingExecute", []interface{}{})
+	fake.blockingExecuteMutex.Unlock()
+	if fake.BlockingExecuteStub != nil {
+		return fake.BlockingExecuteStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.blockingExecuteReturns.result1
+}
+
+func (fake *FakeStartManager) BlockingExecuteCallCount() int {
+	fake.blockingExecuteMutex.RLock()
+	defer fake.blockingExecuteMutex.RUnlock()
+	return len(fake.blockingExecuteArgsForCall)
+}
+
+func (fake *FakeStartManager) BlockingExecuteReturns(result1 error) {
+	fake.BlockingExecuteStub = nil
+	fake.blockingExecuteReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeStartManager) BlockingExecuteReturnsOnCall(i int, result1 error) {
+	fake.BlockingExecuteStub = nil
+	if fake.blockingExecuteReturnsOnCall == nil {
+		fake.blockingExecuteReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.blockingExecuteReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -140,6 +189,8 @@ func (fake *FakeStartManager) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
+	fake.blockingExecuteMutex.RLock()
+	defer fake.blockingExecuteMutex.RUnlock()
 	fake.getMysqlCmdMutex.RLock()
 	defer fake.getMysqlCmdMutex.RUnlock()
 	fake.shutdownMutex.RLock()

@@ -37,14 +37,6 @@ func main() {
 		cfg.Logger.Info(err.Error())
 		panic("manager start failed")
 	}
-	err = writePidFile(cfg)
-	if err != nil {
-		cfg.Logger.Fatal("Error writing pidfile", err, lager.Data{
-			"PidFile": cfg.PidFile,
-		})
-
-		panic("could not write pid")
-	}
 
 	cfg.Logger.Info("galera-init started")
 

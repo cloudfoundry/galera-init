@@ -3,6 +3,7 @@ package start_manager_test
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/cloudfoundry/galera-init/cluster_health_checker/cluster_health_checkerfakes"
@@ -93,6 +94,57 @@ var _ = Describe("StartManager", func() {
 
 	JustBeforeEach(func() {
 		fakeStarter.StartNodeFromStateReturns(startNodeReturn, startNodeReturnError)
+	})
+
+	Describe("Process Lifecycle", func() {
+		Context("When starting", func() {
+			const (
+				MYSQLD_RUN_TIME      = 2000 * time.Millisecond
+				GALERA_INIT_RUN_TIME = 2250 * time.Millisecond
+				POLLING_INTERVAL     = GALERA_INIT_RUN_TIME - MYSQLD_RUN_TIME
+
+				// GALERA_INIT_LIFETIME = GALERA_INIT_RUN_TIME + MYSQLD_RUN_TIME
+			)
+
+			var fakeMysqldChan chan error
+
+			BeforeEach(func() {
+				mgr = createManager(managerArgs{
+					BootstrapNode: false,
+					NodeCount:     1,
+				})
+				fakeMysqldChan = make(chan error, 1)
+
+				stub := func(string) (string, chan error, error) {
+					time.Sleep(MYSQLD_RUN_TIME)                      // simulates MySQL starting up
+					fakeMysqldChan <- errors.New("fake MySQL error") // simulates MySQL failing with an error
+					return "", fakeMysqldChan, nil
+				}
+
+				fakeStarter.BlockingStartNodeFromStateStub = stub
+			})
+
+			It("waits until mysqld exits", func() {
+				var err error
+				go func() {
+					err = mgr.BlockingExecute()
+				}()
+
+				// Ensure that we never return an error unless MySQL stub function exits
+				Eventually(func() error {
+					return err
+				}, GALERA_INIT_RUN_TIME, POLLING_INTERVAL).Should(HaveOccurred())
+
+				// go func() {
+				// 	err = mgr.BlockingExecute()
+				// }()
+				//
+				// // Ensure that we never return an error while MySQL stub function is still running
+				// Eventually(func() error {
+				// 	return err
+				// }, 5*time.Second, 1*time.Second).ShouldNot(HaveOccurred())
+			})
+		})
 	})
 
 	Context("When a mysql process is already running", func() {
