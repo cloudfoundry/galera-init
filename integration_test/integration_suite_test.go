@@ -1,15 +1,19 @@
 package integration_test
 
 import (
+	"fmt"
 	"os"
+	"path"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-cf-experimental/service-config"
 )
 
 var testConfig TestDBConfig
+var serviceConfig *service_config.ServiceConfig
 
 func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -25,9 +29,16 @@ type TestDBConfig struct {
 	DBName   string
 }
 
+var (
+	PathToIsaac   string
+	PathToAbraham string
+	newPath       string
+	oldPath       string
+)
+
 var _ = BeforeSuite(func() {
 
-	serviceConfig := service_config.New()
+	serviceConfig = service_config.New()
 
 	//Use default options rather than throw error if env variables are blank
 	if os.Getenv("CONFIG") == "" && os.Getenv("CONFIG_PATH") == "" {
@@ -42,4 +53,24 @@ var _ = BeforeSuite(func() {
 
 	err := serviceConfig.Read(&testConfig)
 	Expect(err).NotTo(HaveOccurred())
+
+	PathToIsaac, err = gexec.Build("github.com/cloudfoundry/galera-init/integration_test/fixtures/isaac/")
+	Expect(err).NotTo(HaveOccurred())
+	fmt.Println(PathToIsaac)
+
+	PathToAbraham, err = gexec.Build("github.com/cloudfoundry/galera-init/cmd/start/")
+	Expect(err).NotTo(HaveOccurred())
+
+	dirname := path.Dir(PathToIsaac)
+	err = os.Rename(PathToIsaac, dirname+"/mysqld")
+	Expect(err).NotTo(HaveOccurred())
+
+	oldPath = os.Getenv("PATH")
+	newPath = fmt.Sprintf("%s:%s", dirname, oldPath)
+	os.Setenv("PATH", newPath)
+})
+
+var _ = AfterSuite(func() {
+	gexec.CleanupBuildArtifacts()
+	os.Setenv("PATH", oldPath)
 })

@@ -25,6 +25,7 @@ type DBHelper interface {
 	Upgrade() (output string, err error)
 	IsDatabaseReachable() bool
 	IsProcessRunning() bool
+	IsTestMode() bool
 	Seed() error
 	RunPostStartSQL() error
 	TestDatabaseCleanup() error
@@ -57,16 +58,24 @@ var BuildSeeder = func(db *sql.DB, config config.PreseededDatabase, logger lager
 
 // Overridable methods to allow mocking DB connections in tests
 var OpenDBConnection = func(config *config.DBHelper) (*sql.DB, error) {
+	var err error
+
+	db := new(sql.DB)
 	c := mysql.Config{
 		User:   config.User,
 		Passwd: config.Password,
 		Net:    "unix",
 		Addr:   config.Socket,
 	}
-	db, err := sql.Open("mysql", c.FormatDSN())
-	if err != nil {
-		return nil, err
-	}
+
+	if !config.TestMode {
+		db, err = sql.Open("mysql", c.FormatDSN())
+		if err != nil {
+			return nil, err
+		}
+	} // maybe we can use mock-sql as the driver here in test mode!! https://github.com/DATA-DOG/go-sqlmock
+
+	// Intentionally returning a potentially uninitiallized sql.DB pointer to support integration testing
 	return db, nil
 }
 var CloseDBConnection = func(db *sql.DB) error {
@@ -145,9 +154,22 @@ func (m GaleraDBHelper) Upgrade() (output string, err error) {
 	)
 }
 
+func (m GaleraDBHelper) IsTestMode() bool {
+	return m.config.TestMode
+}
+
+func (m GaleraDBHelper) rescue() {
+
+	r := recover()
+	if r != nil {
+		m.logger.Info("recovered from panic")
+	}
+}
 func (m GaleraDBHelper) IsDatabaseReachable() bool {
 	m.logger.Info(fmt.Sprintf("Determining if database is reachable"))
 
+	//DO NOT LEAVE THIS RESCUE IN WHEN YOU MERGE THE WIP
+	defer m.rescue()
 	db, err := OpenDBConnection(m.config)
 	if err != nil {
 		m.logger.Info("database not reachable", lager.Data{"err": err})
@@ -159,16 +181,18 @@ func (m GaleraDBHelper) IsDatabaseReachable() bool {
 		unused string
 		value  string
 	)
-
+	m.logger.Info(fmt.Sprintf("about to check that we can show global variables like wsrep_on. DB is: %#v", db))
 	err = db.QueryRow(`SHOW GLOBAL VARIABLES LIKE 'wsrep\_on'`).Scan(&unused, &value)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			m.logger.Info(fmt.Sprintf("Database is reachable, Galera is off"))
 			return true
 		}
+		m.logger.Info(fmt.Sprintf("got an error showing variables like wsrep_on. Err:%s", err.Error()))
 		return false
 	}
 
+	m.logger.Info("finished showing gloval variables with no error")
 	if value == "OFF" {
 		m.logger.Info(fmt.Sprintf("Database is reachable, Galera is off"))
 		return true
@@ -176,6 +200,7 @@ func (m GaleraDBHelper) IsDatabaseReachable() bool {
 
 	err = db.QueryRow(`SHOW STATUS LIKE 'wsrep\_ready'`).Scan(&unused, &value)
 	if err != nil {
+		m.logger.Info("scanning global status like wsrep_ready failed")
 		return false
 	}
 

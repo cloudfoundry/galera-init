@@ -31,7 +31,7 @@ func main() {
 	}
 
 	startManager := managerSetup(cfg)
-	err = startManager.Execute()
+	err = startManager.BlockingExecute()
 
 	if err != nil {
 		cfg.Logger.Info(err.Error())

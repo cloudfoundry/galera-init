@@ -30,6 +30,7 @@ type DBHelper struct {
 	PreseededDatabases []PreseededDatabase `yaml:"PreseededDatabases"`
 	PostStartSQLFiles  []string            `yaml:"PostStartSQLFiles"`
 	Socket             string              `yaml:"Socket"`
+	TestMode           bool                `yaml:"TestMode"`
 }
 
 type StartManager struct {

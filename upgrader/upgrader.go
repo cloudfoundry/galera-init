@@ -5,11 +5,12 @@ import (
 	"regexp"
 	"time"
 
+	"strings"
+
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/galera-init/config"
 	"github.com/cloudfoundry/galera-init/db_helper"
 	"github.com/cloudfoundry/galera-init/os_helper"
-	"strings"
 )
 
 //go:generate counterfeiter . Upgrader

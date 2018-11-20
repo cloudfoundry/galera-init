@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/galera-init/cluster_health_checker"
@@ -110,16 +111,18 @@ func (m *startManager) BlockingExecute() error {
 		m.Shutdown()
 	}
 
-	needsUpgrade, err := m.upgrader.NeedsUpgrade()
-	if err != nil {
-		m.logger.Info("Failed to determine upgrade status with error", lager.Data{"err": err.Error()})
-		return err
-	}
-	if needsUpgrade {
-		err = m.upgrader.Upgrade()
+	if !m.dbHelper.IsTestMode() {
+		needsUpgrade, err := m.upgrader.NeedsUpgrade()
 		if err != nil {
-			m.logger.Info("Failed during upgrade", lager.Data{"err": err.Error()})
+			m.logger.Info("Failed to determine upgrade status with error", lager.Data{"err": err.Error()})
 			return err
+		}
+		if needsUpgrade {
+			err = m.upgrader.Upgrade()
+			if err != nil {
+				m.logger.Info("Failed during upgrade", lager.Data{"err": err.Error()})
+				return err
+			}
 		}
 	}
 
@@ -138,6 +141,8 @@ func (m *startManager) BlockingExecute() error {
 		return err
 	}
 
+	m.logger.Info("Done with BlockingStart", lager.Data{})
+
 	err = m.writeStringToFile(newNodeState)
 	if err != nil {
 		return err
@@ -146,6 +151,7 @@ func (m *startManager) BlockingExecute() error {
 	for {
 		select {
 		case msg := <-mysqldChan:
+			fmt.Printf("WE GOT IT: %d\n", msg.(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus())
 			return msg
 		default:
 			continue
@@ -157,6 +163,7 @@ func (m *startManager) getCurrentNodeState() (string, error) {
 
 	// Single-node deploy always requires bootstrapping of new cluster
 	if len(m.config.ClusterIps) == 1 {
+		fmt.Println("starting node in singlenode mode because cluster ips is len 1")
 		return node_starter.SingleNode, nil
 	}
 
