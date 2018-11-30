@@ -70,7 +70,40 @@ var _ = Describe("Process Lifecycle", func() {
 
 		Context("galera-init exits when the child mysql process is killed with SIGTERM ", func() {
 			It("gracefully shutsdown", func() {
-					Expect(1).NotTo(Equal(1))
+				defer GinkgoRecover()
+				abrahamCmd := exec.Command(PathToAbraham, "-configPath", "fixtures/abraham/config.yml")
+				abrahamCmd.Stdout = os.Stdout
+				abrahamCmd.Stderr = os.Stderr
+
+				err := abrahamCmd.Start()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Need to take a quick nap...
+				time.Sleep(5 * time.Second)
+				isaac := findChildProcess()
+
+				go func() {
+					exitStatus := abrahamCmd.Wait() // .(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus()
+					Expect(exitStatus).To(BeNil())
+					if exitStatus == nil {
+						exitStatusChan <- 0
+					}
+
+				}()
+
+				// Need to sleep to let the db come up
+				time.Sleep(5 * time.Second)
+				err = isaac.Signal(syscall.SIGTERM)
+				Expect(err).NotTo(HaveOccurred())
+
+				var exitStatus int
+
+				Eventually(func() int {
+					exitStatus = <-exitStatusChan
+					return exitStatus
+				}).Should(Equal(0))
+
+				Expect(exitStatus).Should(Equal(int(0)), "Expected galera-init process to exit with 15, indicating a SIGTERM was received")
 			})
 		})
 

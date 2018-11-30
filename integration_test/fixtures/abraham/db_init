@@ -35,6 +35,8 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
 DROP USER IF EXISTS 'roadmin'@'%';
 
 
+
+  
 DROP USER IF EXISTS 'roadmin'@'localhost';
   
 DROP USER IF EXISTS 'roadmin'@'127.0.0.1';
