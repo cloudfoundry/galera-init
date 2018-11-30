@@ -1,9 +1,7 @@
 package integration_test
 
 import (
-	"fmt"
 	"os"
-	"path"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -54,20 +52,8 @@ var _ = BeforeSuite(func() {
 	err := serviceConfig.Read(&testConfig)
 	Expect(err).NotTo(HaveOccurred())
 
-	PathToIsaac, err = gexec.Build("github.com/cloudfoundry/galera-init/integration_test/fixtures/isaac/")
-	Expect(err).NotTo(HaveOccurred())
-	fmt.Println(PathToIsaac)
-
 	PathToAbraham, err = gexec.Build("github.com/cloudfoundry/galera-init/cmd/start/")
 	Expect(err).NotTo(HaveOccurred())
-
-	dirname := path.Dir(PathToIsaac)
-	err = os.Rename(PathToIsaac, dirname+"/mysqld")
-	Expect(err).NotTo(HaveOccurred())
-
-	oldPath = os.Getenv("PATH")
-	newPath = fmt.Sprintf("%s:%s", dirname, oldPath)
-	os.Setenv("PATH", newPath)
 })
 
 var _ = AfterSuite(func() {

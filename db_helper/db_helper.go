@@ -25,7 +25,6 @@ type DBHelper interface {
 	Upgrade() (output string, err error)
 	IsDatabaseReachable() bool
 	IsProcessRunning() bool
-	IsTestMode() bool
 	Seed() error
 	RunPostStartSQL() error
 	TestDatabaseCleanup() error
@@ -56,7 +55,6 @@ var BuildSeeder = func(db *sql.DB, config config.PreseededDatabase, logger lager
 	return s.NewSeeder(db, config, logger)
 }
 
-// Overridable methods to allow mocking DB connections in tests
 var OpenDBConnection = func(config *config.DBHelper) (*sql.DB, error) {
 	var err error
 
@@ -68,14 +66,11 @@ var OpenDBConnection = func(config *config.DBHelper) (*sql.DB, error) {
 		Addr:   config.Socket,
 	}
 
-	if !config.TestMode {
-		db, err = sql.Open("mysql", c.FormatDSN())
-		if err != nil {
-			return nil, err
-		}
-	} // maybe we can use mock-sql as the driver here in test mode!! https://github.com/DATA-DOG/go-sqlmock
+	db, err = sql.Open("mysql", c.FormatDSN())
+	if err != nil {
+		return nil, err
+	}
 
-	// Intentionally returning a potentially uninitiallized sql.DB pointer to support integration testing
 	return db, nil
 }
 var CloseDBConnection = func(db *sql.DB) error {
@@ -154,10 +149,6 @@ func (m GaleraDBHelper) Upgrade() (output string, err error) {
 	)
 }
 
-func (m GaleraDBHelper) IsTestMode() bool {
-	return m.config.TestMode
-}
-
 func (m GaleraDBHelper) rescue() {
 
 	r := recover()
@@ -168,8 +159,6 @@ func (m GaleraDBHelper) rescue() {
 func (m GaleraDBHelper) IsDatabaseReachable() bool {
 	m.logger.Info(fmt.Sprintf("Determining if database is reachable"))
 
-	//DO NOT LEAVE THIS RESCUE IN WHEN YOU MERGE THE WIP
-	defer m.rescue()
 	db, err := OpenDBConnection(m.config)
 	if err != nil {
 		m.logger.Info("database not reachable", lager.Data{"err": err})
@@ -192,7 +181,7 @@ func (m GaleraDBHelper) IsDatabaseReachable() bool {
 		return false
 	}
 
-	m.logger.Info("finished showing gloval variables with no error")
+	m.logger.Info("finished showing global variables with no error")
 	if value == "OFF" {
 		m.logger.Info(fmt.Sprintf("Database is reachable, Galera is off"))
 		return true
@@ -294,6 +283,7 @@ func (m GaleraDBHelper) RunPostStartSQL() error {
 }
 
 func (m GaleraDBHelper) TestDatabaseCleanup() error {
+	m.logger.Info("Cleaning up databases")
 	db, err := OpenDBConnection(m.config)
 	if err != nil {
 		panic("")

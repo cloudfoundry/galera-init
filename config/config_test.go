@@ -125,10 +125,6 @@ var _ = Describe("Config", func() {
 
 			It("does not return an error if Db.Password is blank", isOptionalField("Db.Password"))
 			It("does not return an error if Db.PreseededDatabases is blank", isOptionalField("Db.PreseededDatabases"))
-			It("does not return an error if Db.TestMode is blank", isOptionalField("Db.TestMode"))
-			It("defaults TestMode to false when blank", func() {
-				Expect(rootConfig.Db.TestMode).To(BeFalse())
-			})
 
 			Describe("PreseededDatabase", func() {
 				It("returns an error if Db.PreseededDatabases.DBName is blank", isRequiredField("Db.PreseededDatabases.DBName"))

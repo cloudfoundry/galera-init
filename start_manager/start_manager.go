@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"syscall"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/galera-init/cluster_health_checker"
@@ -13,6 +12,8 @@ import (
 	"github.com/cloudfoundry/galera-init/os_helper"
 	"github.com/cloudfoundry/galera-init/start_manager/node_starter"
 	"github.com/cloudfoundry/galera-init/upgrader"
+	"github.com/go-sql-driver/mysql"
+	"github.com/pkg/errors"
 )
 
 //go:generate counterfeiter . StartManager
@@ -111,19 +112,10 @@ func (m *startManager) BlockingExecute() error {
 		m.Shutdown()
 	}
 
-	if !m.dbHelper.IsTestMode() {
-		needsUpgrade, err := m.upgrader.NeedsUpgrade()
-		if err != nil {
-			m.logger.Info("Failed to determine upgrade status with error", lager.Data{"err": err.Error()})
-			return err
-		}
-		if needsUpgrade {
-			err = m.upgrader.Upgrade()
-			if err != nil {
-				m.logger.Info("Failed during upgrade", lager.Data{"err": err.Error()})
-				return err
-			}
-		}
+	err = m.performUpgrade()
+	if err != nil {
+		// mysqld should not be up at this point
+		return errors.Wrap(err, "Failed to perform upgrade because: ")
 	}
 
 	m.logger.Info("Determining bootstrap procedure", lager.Data{
@@ -131,32 +123,69 @@ func (m *startManager) BlockingExecute() error {
 		"BootstrapNode": m.config.BootstrapNode,
 	})
 
+	m.logger.Debug("Obtaining node state.")
+
 	currentState, err := m.getCurrentNodeState()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Could not determine node state: ")
 	}
+
+	m.logger.Debug("BlockingStart completed.")
 
 	newNodeState, mysqldChan, err = m.startCaller.BlockingStartNodeFromState(currentState)
 	if err != nil {
-		return err
+		m.Shutdown() // because it may be running???
+		return errors.Wrap(err, "Failed to start up mysql daemon: ")
 	}
 
-	m.logger.Info("Done with BlockingStart", lager.Data{})
+	m.logger.Debug("BlockingStart completed.")
 
 	err = m.writeStringToFile(newNodeState)
 	if err != nil {
-		return err
+		m.logger.Error("error writeStringToFile", err)
+		m.Shutdown() // because it should be running
+		return errors.Wrap(err, "Failed to write new node state to file: ")
 	}
+
+	m.logger.Info("Bootstrapping done, listening on channel forever.")
 
 	for {
 		select {
 		case msg := <-mysqldChan:
-			fmt.Printf("WE GOT IT: %d\n", msg.(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus())
-			return msg
+			switch msg.(type) {
+			case *exec.ExitError:
+				// if there is an error should we shutdown?
+				m.logger.Error("Got exec.ExitError: ", msg)
+				return msg
+			case *mysql.MySQLError:
+				m.logger.Error("Got mysql.MySQLError: ", msg)
+			default:
+				m.logger.Error("Unknown error received: ", msg)
+				if msg == nil {
+					return msg
+				}
+			}
 		default:
 			continue
 		}
 	}
+}
+
+func (m *startManager) performUpgrade() error {
+	needsUpgrade, err := m.upgrader.NeedsUpgrade()
+	if err != nil {
+		m.logger.Info("Failed to determine upgrade status with error", lager.Data{"err": err.Error()})
+		return errors.Wrap(err, "Failed to determine upgrade status with error")
+	}
+
+	if needsUpgrade {
+		err = m.upgrader.Upgrade()
+		if err != nil {
+			m.logger.Info("Failed during upgrade", lager.Data{"err": err.Error()})
+			return errors.Wrap(err, "Failed during upgrade")
+		}
+	}
+	return nil
 }
 
 func (m *startManager) getCurrentNodeState() (string, error) {

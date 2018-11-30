@@ -1,0 +1,46 @@
+
+
+DELETE FROM mysql.user WHERE User='';
+
+
+
+
+
+CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED BY 'root';
+SET PASSWORD FOR 'root'@'localhost' = PASSWORD('root');
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
+
+  
+
+CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED BY 'root';
+SET PASSWORD FOR 'root'@'127.0.0.1' = PASSWORD('root');
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;
+
+  
+
+CREATE USER IF NOT EXISTS 'root'@'::1' IDENTIFIED BY 'root';
+SET PASSWORD FOR 'root'@'::1' = PASSWORD('root');
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'::1' WITH GRANT OPTION;
+
+
+CREATE USER IF NOT EXISTS 'simon'@'%' IDENTIFIED BY 'says';
+SET PASSWORD FOR 'simon'@'%' = PASSWORD('says');
+GRANT ALL PRIVILEGES ON *.* TO 'simon'@'%' WITH GRANT OPTION;
+  
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY 'root';
+SET PASSWORD FOR 'root'@'%' = PASSWORD('root');
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+
+
+DROP USER IF EXISTS 'roadmin'@'%';
+
+
+DROP USER IF EXISTS 'roadmin'@'localhost';
+  
+DROP USER IF EXISTS 'roadmin'@'127.0.0.1';
+  
+DROP USER IF EXISTS 'roadmin'@'::1';
+  
+
+
+FLUSH PRIVILEGES;

@@ -1,7 +1,6 @@
 package integration_test
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -20,7 +19,6 @@ var _ = Describe("Process Lifecycle", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		isaacPIDStr := string(isaacPIDBytes)
-		fmt.Println("isaac pid string: ", isaacPIDStr)
 		isaacPID, err := strconv.Atoi(strings.TrimSpace(isaacPIDStr))
 		Expect(err).NotTo(HaveOccurred())
 
@@ -29,44 +27,52 @@ var _ = Describe("Process Lifecycle", func() {
 		return isaac
 	}
 
-	Context("When the process starts", func() {
+	FContext("When the process starts", func() {
 		var (
-			sigtermExitCode int
+			exitStatusChan chan int
 		)
-
 		BeforeEach(func() {
-			sigtermExitCode = 128 + 15 // 128 to reach the process terminated range of exit codes, 15 for sigterm
+			exitStatusChan = make(chan int)
 		})
 
-		It("galera-init exits when the child mysql process is killed", func() {
-
+		It("galera-init exits when the child mysql process is killed with SIGKILL", func() {
+			defer GinkgoRecover()
 			abrahamCmd := exec.Command(PathToAbraham, "-configPath", "fixtures/abraham/config.yml")
 			abrahamCmd.Stdout = os.Stdout
+			abrahamCmd.Stderr = os.Stderr
 
 			err := abrahamCmd.Start()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Need to take a quick nap...
-			time.Sleep(10 * time.Second)
+			time.Sleep(5 * time.Second)
 			isaac := findChildProcess()
 
-			var exitStatus int
 			go func() {
-				// Ooooooh yeahhh, check out how idiotic -- I mean, how idiomatic this is!
-				exitStatus = abrahamCmd.Wait().(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus()
+				exitStatus := abrahamCmd.Wait().(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus()
+				exitStatusChan <- exitStatus
 			}()
 
-			err = isaac.Signal(syscall.SIGTERM)
+			// Need to sleep to let the db come up
+			time.Sleep(5 * time.Second)
+			err = isaac.Signal(syscall.SIGKILL)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Processes that exit due to a signal have exit codes above 128 (128 + SIGNAL)
-			// Let's check for 128 + 15 (sigterm)
+			var exitStatus int
+
 			Eventually(func() int {
+				exitStatus = <-exitStatusChan
 				return exitStatus
-			}, 5*time.Second).Should(Equal(sigtermExitCode), "Expected galera-init process to exit with 143, indicating a SIGTERM was received")
+			}).ShouldNot(Equal(0))
 
-			fmt.Printf("ExitStatus: %d\n", exitStatus)
-
+			Expect(exitStatus).Should(Equal(int(syscall.SIGKILL)), "Expected galera-init process to exit with 15, indicating a SIGTERM was received")
 		})
+
+		Context("galera-init exits when the child mysql process is killed with SIGTERM ", func() {
+			It("gracefully shutsdown", func() {
+					Expect(1).NotTo(Equal(1))
+			})
+		})
+
 	})
 })

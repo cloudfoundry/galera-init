@@ -1,10 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
-
-	"fmt"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/galera-init/cluster_health_checker"
@@ -14,6 +13,8 @@ import (
 	"github.com/cloudfoundry/galera-init/start_manager"
 	"github.com/cloudfoundry/galera-init/start_manager/node_starter"
 	"github.com/cloudfoundry/galera-init/upgrader"
+	"os/exec"
+	"syscall"
 )
 
 func main() {
@@ -30,16 +31,27 @@ func main() {
 		return
 	}
 
+	cfg.Logger.Info("galera-init starting")
+
 	startManager := managerSetup(cfg)
 	err = startManager.BlockingExecute()
 
 	if err != nil {
-		cfg.Logger.Info(err.Error())
-		panic("manager start failed")
+		cfg.Logger.Error("Mysqld return an error: ", err)
+
+		switch err.(type) {
+		case *exec.ExitError:
+			cfg.Logger.Error("Mysqld daemon was ungracefully exited because: ", err)
+			status := int(err.(*exec.ExitError).Sys().(syscall.WaitStatus).Signal())
+			os.Exit(status)
+		default:
+			cfg.Logger.Error("Unhandled error in main(), exiting with -1: ", err)
+			os.Exit(-1)
+		}
 	}
 
-	cfg.Logger.Info("galera-init started")
-
+	cfg.Logger.Info("galera-init shutting down!")
+	os.Exit(0)
 }
 
 func writePidFile(cfg *config.Config) error {

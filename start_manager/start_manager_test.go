@@ -131,6 +131,7 @@ var _ = Describe("StartManager", func() {
 				}()
 
 				// Ensure that we never return an error unless MySQL stub function exits
+				// This isn't a very precise expectation, other errors could cause it to pass
 				Eventually(func() error {
 					return err
 				}, GALERA_INIT_RUN_TIME, POLLING_INTERVAL).Should(HaveOccurred())
