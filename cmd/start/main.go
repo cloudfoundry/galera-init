@@ -5,6 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 
+	"os/exec"
+	"syscall"
+
 	"code.cloudfoundry.org/lager"
 	"github.com/cloudfoundry/galera-init/cluster_health_checker"
 	"github.com/cloudfoundry/galera-init/config"
@@ -13,8 +16,6 @@ import (
 	"github.com/cloudfoundry/galera-init/start_manager"
 	"github.com/cloudfoundry/galera-init/start_manager/node_starter"
 	"github.com/cloudfoundry/galera-init/upgrader"
-	"os/exec"
-	"syscall"
 )
 
 func main() {
@@ -45,8 +46,8 @@ func main() {
 			status := int(err.(*exec.ExitError).Sys().(syscall.WaitStatus).Signal())
 			os.Exit(status)
 		default:
-			cfg.Logger.Error("Unhandled error in main(), exiting with -1: ", err)
-			os.Exit(-1)
+			cfg.Logger.Error("Unhandled error in main(), exiting with 1: ", err)
+			os.Exit(1)
 		}
 	}
 
