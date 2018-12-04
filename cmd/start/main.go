@@ -45,6 +45,7 @@ func main() {
 			cfg.Logger.Error("Mysqld daemon was ungracefully exited because: ", err)
 			status := int(err.(*exec.ExitError).Sys().(syscall.WaitStatus).Signal())
 			os.Exit(status)
+			// case bootstrapFailedErr
 		default:
 			cfg.Logger.Error("Unhandled error in main(), exiting with 1: ", err)
 			os.Exit(1)

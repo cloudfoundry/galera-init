@@ -50,6 +50,7 @@ func (h OsHelperImpl) StartCommand(logFileName string, executable string, args .
 	}
 	cmd.Env = os.Environ()
 
+	cmd = ModifyCmdAttributes(cmd)
 	cmd.Start()
 	return cmd, nil
 }

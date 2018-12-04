@@ -49,7 +49,7 @@ var _ = Describe("Process Lifecycle", func() {
 			isaac := findChildProcess()
 
 			go func() {
-				exitStatus := abrahamCmd.Wait().(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus()
+				exitStatus := retrieveExitStatus(abrahamCmd.Wait())
 				exitStatusChan <- exitStatus
 			}()
 
@@ -58,17 +58,11 @@ var _ = Describe("Process Lifecycle", func() {
 			err = isaac.Signal(syscall.SIGKILL)
 			Expect(err).NotTo(HaveOccurred())
 
-			var exitStatus int
-
-			Eventually(func() int {
-				exitStatus = <-exitStatusChan
-				return exitStatus
-			}).ShouldNot(Equal(0))
-
-			Expect(exitStatus).Should(Equal(int(syscall.SIGKILL)), "Expected galera-init process to exit with 9, indicating a SIGKILL was received")
+			Eventually(exitStatusChan).Should(
+				Receive(Equal(int(syscall.SIGKILL))), "Expected galera-init process to exit with 9, indicating a SIGKILL was received")
 		})
 
-		Context("galera-init exits when the child mysql process is killed with SIGTERM ", func() {
+		Context("galera-init exits when the child mysql process is killed with SIGTERM", func() {
 			It("gracefully shutsdown", func() {
 				abrahamCmd := exec.Command(PathToAbraham, "-configPath", "fixtures/abraham/config.yml")
 				abrahamCmd.Stdout = os.Stdout
@@ -83,7 +77,7 @@ var _ = Describe("Process Lifecycle", func() {
 
 				go func() {
 					defer GinkgoRecover()
-					exitStatus := abrahamCmd.Wait() // .(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus()
+					exitStatus := abrahamCmd.Wait()
 					Expect(exitStatus).To(BeNil())
 					if exitStatus == nil {
 						exitStatusChan <- 0
@@ -95,56 +89,81 @@ var _ = Describe("Process Lifecycle", func() {
 				err = isaac.Signal(syscall.SIGTERM)
 				Expect(err).NotTo(HaveOccurred())
 
-				var exitStatus int
+				Eventually(exitStatusChan).Should(Receive(Equal(0)), "Expected galera-init process to exit with 15, indicating a SIGTERM was received")
+			})
+		})
 
-				Eventually(func() int {
-					exitStatus = <-exitStatusChan
-					return exitStatus
-				}).Should(Equal(0))
+		Context("mysqld exits when the parent galera-init process is killed with SIGTERM ", func() {
+			FIt("gracefully shutsdown", func() {
+				abrahamCmd := exec.Command(PathToAbraham, "-configPath", "fixtures/abraham/config.yml")
+				abrahamCmd.Stdout = os.Stdout
+				abrahamCmd.Stderr = os.Stderr
 
-				Expect(exitStatus).Should(Equal(int(0)), "Expected galera-init process to exit with 15, indicating a SIGTERM was received")
+				err := abrahamCmd.Start()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Need to sleep to let the db come up
+				// Should we inspect the mysqld.log instead
+				time.Sleep(5 * time.Second)
+				err = abrahamCmd.Process.Signal(syscall.SIGTERM)
+				Expect(err).NotTo(HaveOccurred())
+
+				var exitError error
+				Eventually(func() error {
+					grepCmd := exec.Command("pgrep", "mysqld")
+					_, exitError = grepCmd.Output()
+					return exitError
+				}, 20*time.Second, 1*time.Second).Should(HaveOccurred())
+
+				Expect(retrieveExitStatus(exitError)).To(Equal(1))
 			})
 		})
 
 		Context("galera-init fails to bootstrap process", func() {
 			stateFile := "testStateFileLocation"
+
 			BeforeEach(func() {
-				os.Remove(stateFile)
-			})
-
-			FIt("shutdowns mysqld", func() {
-				defer GinkgoRecover()
-
 				file, err := os.Create(stateFile)
 				Expect(err).NotTo(HaveOccurred())
 				file.WriteString("CLUSTERED")
 				Expect(err).NotTo(HaveOccurred())
 				err = os.Chmod(stateFile, 0400)
 				Expect(err).NotTo(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				os.Remove(stateFile)
+			})
+
+			It("shutdowns mysqld", func() {
+				defer GinkgoRecover()
 
 				abrahamCmd := exec.Command(PathToAbraham, "-configPath", "fixtures/abraham/config.yml")
 				abrahamCmd.Stdout = os.Stdout
 				abrahamCmd.Stderr = os.Stderr
 
-				err = abrahamCmd.Start()
+				err := abrahamCmd.Start()
 				Expect(err).NotTo(HaveOccurred())
 
 				go func() {
-					exitStatus := abrahamCmd.Wait().(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus()
+					exitStatus := retrieveExitStatus(abrahamCmd.Wait())
 					exitStatusChan <- exitStatus
 				}()
 
-				exitStatus := <-exitStatusChan
-				Expect(exitStatus).Should(Equal(int(1)), "Expected galera-init process to exit with 1, indicating an error inside galera-init, not mysqld")
+				Eventually(exitStatusChan).Should(Receive(Equal(int(1))), "Expected galera-init process to exit with 1, indicating an error inside galera-init, not mysqld")
 
 				Eventually(func() bool {
 					grepCmd := exec.Command("pgrep", "mysqld")
 					isaacPIDBytes, err := grepCmd.Output()
 					Expect(err).To(HaveOccurred())
-					Expect(err.(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus()).To(Equal(1))
+					Expect(retrieveExitStatus(err)).To(Equal(1))
 					return len(isaacPIDBytes) == 0
 				}).Should(BeTrue())
 			})
 		})
 	})
 })
+
+func retrieveExitStatus(err error) int {
+	return err.(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus()
+}
