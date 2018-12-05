@@ -27,7 +27,7 @@ var _ = Describe("Process Lifecycle", func() {
 		return isaac
 	}
 
-	FContext("When the process starts", func() {
+	Context("When the process starts", func() {
 		var (
 			exitStatusChan chan int
 		)
@@ -75,10 +75,9 @@ var _ = Describe("Process Lifecycle", func() {
 				isaac := findChildProcess()
 
 				go func() {
-					defer GinkgoRecover()
-					exitStatus := abrahamCmd.Wait()
-					Expect(exitStatus).To(BeNil())
-					if exitStatus == nil {
+					if err := abrahamCmd.Wait(); err != nil {
+						exitStatusChan <- 1
+					} else {
 						exitStatusChan <- 0
 					}
 				}()
@@ -149,7 +148,7 @@ var _ = Describe("Process Lifecycle", func() {
 					exitStatusChan <- exitStatus
 				}()
 
-				Eventually(exitStatusChan).Should(Receive(Equal(int(1))), "Expected galera-init process to exit with 1, indicating an error inside galera-init, not mysqld")
+				Eventually(exitStatusChan, "30s", "1s").Should(Receive(Equal(int(1))), "Expected galera-init process to exit with 1, indicating an error inside galera-init, not mysqld")
 
 				Eventually(func() bool {
 					grepCmd := exec.Command("pgrep", "mysqld")
