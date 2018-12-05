@@ -35,11 +35,10 @@ var _ = Describe("Process Lifecycle", func() {
 			exitStatusChan = make(chan int)
 		})
 
-		It("galera-init exits when the child mysql process is killed with SIGKILL", func() {
-			defer GinkgoRecover()
+		It("galera-init exits when the child mysqld process is killed with SIGKILL", func() {
 			abrahamCmd := exec.Command(PathToAbraham, "-configPath", "fixtures/abraham/config.yml")
-			abrahamCmd.Stdout = os.Stdout
-			abrahamCmd.Stderr = os.Stderr
+			abrahamCmd.Stdout = GinkgoWriter
+			abrahamCmd.Stderr = GinkgoWriter
 
 			err := abrahamCmd.Start()
 			Expect(err).NotTo(HaveOccurred())
@@ -62,11 +61,11 @@ var _ = Describe("Process Lifecycle", func() {
 				Receive(Equal(int(syscall.SIGKILL))), "Expected galera-init process to exit with 9, indicating a SIGKILL was received")
 		})
 
-		Context("galera-init exits when the child mysql process is killed with SIGTERM", func() {
-			It("gracefully shutsdown", func() {
+		Context("galera-init exits when the child mysqld process is killed with SIGTERM", func() {
+			It("gracefully shuts down", func() {
 				abrahamCmd := exec.Command(PathToAbraham, "-configPath", "fixtures/abraham/config.yml")
-				abrahamCmd.Stdout = os.Stdout
-				abrahamCmd.Stderr = os.Stderr
+				abrahamCmd.Stdout = GinkgoWriter
+				abrahamCmd.Stderr = GinkgoWriter
 
 				err := abrahamCmd.Start()
 				Expect(err).NotTo(HaveOccurred())
@@ -89,22 +88,22 @@ var _ = Describe("Process Lifecycle", func() {
 				err = isaac.Signal(syscall.SIGTERM)
 				Expect(err).NotTo(HaveOccurred())
 
-				Eventually(exitStatusChan).Should(Receive(Equal(0)), "Expected galera-init process to exit with 15, indicating a SIGTERM was received")
+				Eventually(exitStatusChan, "30s", "1s").Should(Receive(Equal(0)), "Expected galera-init process to exit with 15, indicating a SIGTERM was received")
 			})
 		})
 
 		Context("mysqld exits when the parent galera-init process is killed with SIGTERM ", func() {
-			FIt("gracefully shutsdown", func() {
+			It("gracefully shuts down", func() {
 				abrahamCmd := exec.Command(PathToAbraham, "-configPath", "fixtures/abraham/config.yml")
-				abrahamCmd.Stdout = os.Stdout
-				abrahamCmd.Stderr = os.Stderr
+				abrahamCmd.Stdout = GinkgoWriter
+				abrahamCmd.Stderr = GinkgoWriter
 
 				err := abrahamCmd.Start()
 				Expect(err).NotTo(HaveOccurred())
 
 				// Need to sleep to let the db come up
-				// Should we inspect the mysqld.log instead
 				time.Sleep(5 * time.Second)
+
 				err = abrahamCmd.Process.Signal(syscall.SIGTERM)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -113,7 +112,7 @@ var _ = Describe("Process Lifecycle", func() {
 					grepCmd := exec.Command("pgrep", "mysqld")
 					_, exitError = grepCmd.Output()
 					return exitError
-				}, 20*time.Second, 1*time.Second).Should(HaveOccurred())
+				}, "20s", "1s").Should(HaveOccurred())
 
 				Expect(retrieveExitStatus(exitError)).To(Equal(1))
 			})
@@ -135,12 +134,12 @@ var _ = Describe("Process Lifecycle", func() {
 				os.Remove(stateFile)
 			})
 
-			It("shutdowns mysqld", func() {
+			It("shuts down mysqld", func() {
 				defer GinkgoRecover()
 
 				abrahamCmd := exec.Command(PathToAbraham, "-configPath", "fixtures/abraham/config.yml")
-				abrahamCmd.Stdout = os.Stdout
-				abrahamCmd.Stderr = os.Stderr
+				abrahamCmd.Stdout = GinkgoWriter
+				abrahamCmd.Stderr = GinkgoWriter
 
 				err := abrahamCmd.Start()
 				Expect(err).NotTo(HaveOccurred())

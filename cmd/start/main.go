@@ -42,10 +42,19 @@ func main() {
 
 		switch err.(type) {
 		case *exec.ExitError:
-			cfg.Logger.Error("Mysqld daemon was ungracefully exited because: ", err)
-			status := int(err.(*exec.ExitError).Sys().(syscall.WaitStatus).Signal())
-			os.Exit(status)
-			// case bootstrapFailedErr
+			cfg.Logger.Error("Mysqld daemon ungracefully exited because: ", err)
+			ws, ok := err.(*exec.ExitError).Sys().(syscall.WaitStatus)
+			if !ok {
+				cfg.Logger.Error("Unable to determine exit status from error", err, lager.Data{
+					"errType": err.(*exec.ExitError).Sys(),
+				})
+				os.Exit(1)
+			}
+			if ws.Signaled() {
+				os.Exit(int(ws.Signal()))
+			} else {
+				os.Exit(ws.ExitStatus())
+			}
 		default:
 			cfg.Logger.Error("Unhandled error in main(), exiting with 1: ", err)
 			os.Exit(1)
