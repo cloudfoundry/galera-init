@@ -165,8 +165,6 @@ func (m *startManager) BlockingExecute() error {
 					return msg
 				}
 			}
-		default:
-			continue
 		}
 	}
 }
