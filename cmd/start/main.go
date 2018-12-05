@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
 	"os"
 
 	"os/exec"
@@ -63,25 +61,6 @@ func main() {
 
 	cfg.Logger.Info("galera-init shutting down!")
 	os.Exit(0)
-}
-
-func writePidFile(cfg *config.Config) error {
-	cfg.Logger.Info("Copying child pid to parent pid", lager.Data{
-		"childPidfile": cfg.ChildPidFile,
-		"pidfile":      cfg.PidFile,
-	})
-	pidAsByteArray, err := ioutil.ReadFile(cfg.ChildPidFile)
-	if err != nil {
-		panic(fmt.Sprintf("could not read pid file from %s", cfg.ChildPidFile))
-	}
-	return ioutil.WriteFile(cfg.PidFile, pidAsByteArray, 0644)
-}
-
-func deletePidFile(cfg *config.Config) error {
-	cfg.Logger.Info("Deleting pidfile", lager.Data{
-		"pidfile": cfg.PidFile,
-	})
-	return os.Remove(cfg.PidFile)
 }
 
 func managerSetup(cfg *config.Config) start_manager.StartManager {
