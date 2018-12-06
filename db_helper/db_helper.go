@@ -60,10 +60,11 @@ var OpenDBConnection = func(config *config.DBHelper) (*sql.DB, error) {
 
 	db := new(sql.DB)
 	c := mysql.Config{
-		User:   config.User,
-		Passwd: config.Password,
-		Net:    "unix",
-		Addr:   config.Socket,
+		User:                 config.User,
+		Passwd:               config.Password,
+		Net:                  "unix",
+		Addr:                 config.Socket,
+		AllowNativePasswords: true,
 	}
 
 	db, err = sql.Open("mysql", c.FormatDSN())
