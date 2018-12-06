@@ -1,0 +1,30 @@
+---
+# Specifies the location of the log file mysql sends logs to
+LogFileLocation: testPath
+# Specifies the file where the startup manager will write its PID
+PidFile: testPidFile
+ChildPidFile: childTestFile
+Db:
+  # Specifies the location of the script that performs the MySQL upgrade
+  UpgradePath: mysql_upgrade
+  # Specifies the user name for MySQL
+  User: root
+  Socket: /var/run/mysqld/mysqld.sock
+  PreseededDatabases:
+    - DBName: testDbName1
+      User: testUser1
+Upgrader:
+  # Specifies the location of the file containing the MySQL version as deployed
+  PackageVersionFile: testPackageVersionFile
+  # Specifies the location of the file MySQL upgrade writes.
+  LastUpgradedVersionFile: testLastUpgradedVersionFile
+Manager:
+  # Specifies the location to store the statefile for MySQL boot
+  StateFileLocation: /var/lib/mysql/node_state.txt
+  # Specifies the job index of the MySQL node
+  BootstrapNode: true
+  # Comma-delimited list of IPs in the galera cluster
+  ClusterIps: ["1.1.1.1"]
+  # How many times to attempt database seeding before it fails
+  MaxDatabaseSeedTries: 1
+  ClusterProbeTimeout: 13
