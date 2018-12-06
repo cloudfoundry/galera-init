@@ -1,7 +1,10 @@
 package main
 
 import (
+	"log"
 	"os"
+	"os/signal"
+	"time"
 
 	"os/exec"
 	"syscall"
@@ -14,6 +17,8 @@ import (
 	"github.com/cloudfoundry/galera-init/start_manager"
 	"github.com/cloudfoundry/galera-init/start_manager/node_starter"
 	"github.com/cloudfoundry/galera-init/upgrader"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
@@ -29,6 +34,22 @@ func main() {
 		cfg.Logger.Fatal("Error validating config", err)
 		return
 	}
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		sig := <-c
+		log.Printf("Got signal: %v.", sig)
+
+		log.Println("Sending signal to my dear children")
+		err := syscall.Kill(-os.Getpid(), syscall.SIGTERM)
+		log.Printf("Sent kill to children. err=%v", err)
+
+		time.Sleep(30 * time.Second)
+		log.Println("OKAY. Self terminating.")
+		os.Exit(-2)
+	}()
 
 	cfg.Logger.Info("galera-init starting")
 
