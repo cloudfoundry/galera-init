@@ -88,20 +88,20 @@ func (s *starter) StartNodeFromState(state string) (string, error) {
 		return "", err
 	}
 
-	err = s.seedDatabases()
-	if err != nil {
-		return "", err
-	}
-
-	err = s.runPostStartSQL()
-	if err != nil {
-		return "", err
-	}
-
-	err = s.runTestDatabaseCleanup()
-	if err != nil {
-		return "", err
-	}
+	//err = s.seedDatabases()
+	//if err != nil {
+	//	return "", err
+	//}
+	//
+	//err = s.runPostStartSQL()
+	//if err != nil {
+	//	return "", err
+	//}
+	//
+	//err = s.runTestDatabaseCleanup()
+	//if err != nil {
+	//	return "", err
+	//}
 
 	return newNodeState, nil
 }
