@@ -69,11 +69,11 @@ func (m *startManager) Execute() error {
 		return err
 	}
 	if needsUpgrade {
-		err = m.upgrader.Upgrade()
-		if err != nil {
-			m.logger.Info("Failed during upgrade", lager.Data{"err": err.Error()})
-			return err
-		}
+		// err = m.upgrader.Upgrade()
+		// if err != nil {
+		// 	m.logger.Info("Failed during upgrade", lager.Data{"err": err.Error()})
+		// 	return err
+		// }
 	}
 
 	m.logger.Info("Determining bootstrap procedure", lager.Data{
