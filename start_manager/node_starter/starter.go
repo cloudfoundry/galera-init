@@ -20,7 +20,7 @@ const (
 	Clustered                        = "CLUSTERED"
 	NeedsBootstrap                   = "NEEDS_BOOTSTRAP"
 	SingleNode                       = "SINGLE_NODE"
-	StartupPollingFrequencyInSeconds = 5
+	StartupPollingFrequencyInSeconds = 0
 )
 
 //go:generate counterfeiter . Starter
@@ -158,7 +158,8 @@ func (s *starter) waitForDatabaseToAcceptConnections(mysqldChan chan error) erro
 				s.logger.Info(fmt.Sprintf("Database became reachable after %d seconds", numTries*StartupPollingFrequencyInSeconds))
 				return nil
 			} else {
-				s.logger.Info("Database not reachable, retrying...")
+				// Spike: Commenting out to avoid log spam w/ StartupPollingFrequencyInSeconds = 0
+				//s.logger.Info("Database not reachable, retrying...")
 				s.osHelper.Sleep(StartupPollingFrequencyInSeconds * time.Second)
 			}
 		}

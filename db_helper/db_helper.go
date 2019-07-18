@@ -167,32 +167,30 @@ func (m GaleraDBHelper) IsDatabaseReachable() bool {
 	}
 	defer CloseDBConnection(db)
 
+	nodeStateQuery := `
+	SELECT
+		(SELECT variable_value = 'SYNCED' FROM performance_schema.global_status WHERE variable_name = 'wsrep_local_state_comment')
+			AS is_node_synced,
+		(SELECT variable_value = 'ON' FROM performance_schema.global_status WHERE variable_name = 'wsrep_ready')
+			AS is_wsrep_ready
+	`
+
 	var (
-		unused string
-		value  string
+		isReady  bool
+		isSynced bool
 	)
 
-	err = db.QueryRow(`SHOW GLOBAL VARIABLES LIKE 'wsrep\_on'`).Scan(&unused, &value)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			m.logger.Info(fmt.Sprintf("Database is reachable, Galera is off"))
-			return true
-		}
-		return false
-	}
-
-	if value == "OFF" {
-		m.logger.Info(fmt.Sprintf("Database is reachable, Galera is off"))
-		return true
-	}
-
-	err = db.QueryRow(`SHOW STATUS LIKE 'wsrep\_ready'`).Scan(&unused, &value)
+	err = db.QueryRow(nodeStateQuery).Scan(&isSynced, &isReady)
 	if err != nil {
 		return false
 	}
 
-	m.logger.Info(fmt.Sprintf("Database is reachable, Galera is %s", value))
-	return value == "ON"
+	m.logger.Info("database reachable", lager.Data{
+		"wsrep_ready":  isReady,
+		"wsrep_synced": isSynced,
+	})
+
+	return isReady // && isSynced
 }
 
 func (m GaleraDBHelper) Seed() error {
