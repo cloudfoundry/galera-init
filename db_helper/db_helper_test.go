@@ -215,21 +215,21 @@ var _ = Describe("GaleraDBHelper", func() {
 	})
 
 	Describe("IsDatabaseReachable", func() {
-
-		galeraEnabledQuery := `SHOW GLOBAL VARIABLES LIKE 'wsrep\\_on'`
-		galeraReadyQuery := `SHOW STATUS LIKE 'wsrep\\_ready'`
+		galeraReadyQuery := `SHOW GLOBAL STATUS LIKE 'wsrep\\_local\\_state\\_comment'`
+		wsrepProviderQuery := `SHOW GLOBAL VARIABLES LIKE 'wsrep\\_provider'`
 
 		Describe("when galera is enabled", func() {
 			BeforeEach(func() {
-				mock.ExpectQuery(galeraEnabledQuery).
+				mock.ExpectQuery(wsrepProviderQuery).
 					WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}).
-						AddRow("wsrep_on", "ON"))
+						AddRow("wsrep_provider", "something other than none"))
 			})
 
 			Describe("when the ready check fails", func() {
 				BeforeEach(func() {
-					mock.ExpectQuery(galeraReadyQuery).
-						WillReturnError(fmt.Errorf("WHy did this fail?"))
+					mock.ExpectQuery(wsrepProviderQuery).
+						WillReturnError(fmt.Errorf("literally anything other than none"))
+
 				})
 
 				It("returns false", func() {
@@ -237,11 +237,12 @@ var _ = Describe("GaleraDBHelper", func() {
 				})
 			})
 
-			Describe("when the ready check returns ON", func() {
+			Describe("when the galera check returns Synced", func() {
 				BeforeEach(func() {
+
 					mock.ExpectQuery(galeraReadyQuery).
 						WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}).
-							AddRow("wsrep_ready", "ON"))
+							AddRow("wsrep_local_state_comment", "Synced"))
 				})
 
 				It("returns true", func() {
@@ -249,11 +250,14 @@ var _ = Describe("GaleraDBHelper", func() {
 				})
 			})
 
-			Describe("when the ready check returns OFF", func() {
+			Describe("when the galera check returns anything else", func() {
 				BeforeEach(func() {
+					mock.ExpectQuery(wsrepProviderQuery).
+						WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}).
+							AddRow("wsrep_provider", "something other than none"))
 					mock.ExpectQuery(galeraReadyQuery).
 						WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}).
-							AddRow("wsrep_ready", "OFF"))
+							AddRow("wsrep_local_state_comment", "Totally not synced bruh"))
 				})
 
 				It("returns false", func() {
@@ -264,9 +268,9 @@ var _ = Describe("GaleraDBHelper", func() {
 
 		Describe("when galera is disabled", func() {
 			BeforeEach(func() {
-				mock.ExpectQuery(galeraEnabledQuery).
+				mock.ExpectQuery(wsrepProviderQuery).
 					WillReturnRows(sqlmock.NewRows([]string{"Variable_name", "Value"}).
-						AddRow("wsrep_on", "OFF"))
+						AddRow("wsrep_provider", "none"))
 			})
 
 			It("returns true", func() {
@@ -274,10 +278,11 @@ var _ = Describe("GaleraDBHelper", func() {
 			})
 		})
 
-		Describe("when db is unreachable", func() {
+		Describe("when db connection can't be opened", func() {
 			BeforeEach(func() {
-				mock.ExpectQuery(galeraEnabledQuery).
-					WillReturnError(fmt.Errorf("Database isn't up yet"))
+				db_helper.OpenDBConnection = func(*config.DBHelper) (*sql.DB, error) {
+					return nil, fmt.Errorf("whoops")
+				}
 			})
 
 			It("returns false", func() {
