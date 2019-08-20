@@ -3,10 +3,11 @@ package integration_test
 import (
 	"database/sql"
 	"fmt"
+	// docker "github.com/cloudfoundry/galera-init/vendor/github.com/fsouza/go-dockerclient"
 	"strings"
 
 	"code.cloudfoundry.org/lager/lagertest"
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/go-sql-driver/mysql"
 	"github.com/nu7hatch/gouuid"
 
@@ -36,22 +37,40 @@ var _ = Describe("DB Helper", func() {
 
 	BeforeEach(func() {
 		var err error
-		galeraNode, err = test_helpers.RunContainer(
-			dockerClient,
-			"mysql0."+sessionID,
-			test_helpers.WithImage(pxcDockerImage),
-			test_helpers.AddEnvVars(
-				"MYSQL_ALLOW_EMPTY_PASSWORD=1",
-				"CLUSTER_NAME=db-helper-cluster",
-			),
-			test_helpers.WithCmd("--pxc-strict-mode=MASTER"),
-		)
-		Expect(err).NotTo(HaveOccurred())
 
-		rootDsn := fmt.Sprintf("root@tcp(127.0.0.1:%s)/", test_helpers.HostPort(pxcMySQLPort, galeraNode))
-		db, err = sql.Open("mysql", rootDsn)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(db.Ping, "3m", "2s").Should(Succeed())
+		for i := 0; i < 3; i++ {
+
+			galeraNode, err = test_helpers.RunContainer(
+				dockerClient,
+				"mysql0."+sessionID,
+				test_helpers.WithImage(pxcDockerImage),
+				test_helpers.AddEnvVars(
+					"MYSQL_ALLOW_EMPTY_PASSWORD=1",
+					"CLUSTER_NAME=db-helper-cluster",
+				),
+				test_helpers.WithCmd("--pxc-strict-mode=MASTER"),
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			rootDsn := fmt.Sprintf("root@tcp(127.0.0.1:%s)/", test_helpers.HostPort(pxcMySQLPort, galeraNode))
+			db, err = sql.Open("mysql", rootDsn)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() string {
+				result := PingAndDeadlockCheck(db, galeraNode)
+				fmt.Printf("result spam: %v\n", result)
+				return result
+			}, "1m", "2s").Should(Not(ContainSubstring("truckin")))
+			errString := PingAndDeadlockCheck(db, galeraNode)
+			if errString == "our flake" {
+				fmt.Printf("\n\n\n*********************************\n*********************************\nSHAMALAMADINGDONG]\n\n*************************************\n\n\n\n\n")
+				//blow away container
+				if galeraNode != nil {
+					Expect(test_helpers.RemoveContainer(dockerClient, galeraNode)).To(Succeed())
+				}
+				continue
+			}
+			break
+		}
 
 		testConfig = TestDBConfig{
 			Host:     "127.0.0.1:" + test_helpers.HostPort(pxcMySQLPort, galeraNode),
@@ -59,6 +78,8 @@ var _ = Describe("DB Helper", func() {
 			Password: "",
 			DBName:   "",
 		}
+
+		rootDsn := fmt.Sprintf("root@tcp(127.0.0.1:%s)/", test_helpers.HostPort(pxcMySQLPort, galeraNode))
 
 		//override db connection to use test DB
 		db_helper.OpenDBConnection = func(config *config.DBHelper) (*sql.DB, error) {
@@ -231,4 +252,34 @@ func getUUIDWithPrefix(prefix string) string {
 	idString := fmt.Sprintf("%s_%s", prefix, id.String())
 	// mysql does not like hyphens in DB names
 	return strings.Replace(idString, "-", "_", -1)
+}
+
+func PingAndDeadlockCheck(db *sql.DB, galeraNode *docker.Container) string {
+	err := db.Ping()
+	fmt.Printf("the err: %v\n", err)
+	if err == nil {
+		return "gucci"
+	}
+
+	mysqlErrLogContents, err := test_helpers.FetchContainerFileContents(
+		dockerClient,
+		galeraNode,
+		"/var/log/mysql/mysql.err.log",
+	)
+
+	fmt.Printf("The stuff \n: %v", mysqlErrLogContents)
+	if strings.Contains(err.Error(), "Could not find the file /var/log/mysql/mysql.err.log") {
+		return "keep on truckin'"
+	}
+	Expect(err).NotTo(HaveOccurred())
+
+	if strings.Contains(mysqlErrLogContents,"Deadlock found when trying to get lock; try restarting transaction"){
+		//blow away the container, loop again
+		return "our flake"
+	}
+
+	//other error OR not ready
+
+	return "keep on truckin'"
+
 }
