@@ -67,25 +67,6 @@ func (m *startManager) Execute(ctx context.Context) error {
 	var newNodeState string
 	var err error
 
-	if m.dbHelper.IsProcessRunning() {
-		m.logger.Info("mysqld-already-running")
-		m.logger.Info("shutdown-old-mysql")
-		m.Shutdown()
-	}
-
-	needsUpgrade, err := m.upgrader.NeedsUpgrade()
-	if err != nil {
-		m.logger.Error("upgrade-check-failed", err)
-		return err
-	}
-	if needsUpgrade {
-		err = m.upgrader.Upgrade()
-		if err != nil {
-			m.logger.Error("mysql-upgrade-failed", err)
-			return err
-		}
-	}
-
 	m.logger.Info("determining-bootstrap-procedure", lager.Data{
 		"ClusterIps":    m.config.ClusterIps,
 		"BootstrapNode": m.config.BootstrapNode,
