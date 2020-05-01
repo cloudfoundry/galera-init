@@ -59,10 +59,11 @@ var BuildUserSeeder = func(db *sql.DB, logger lager.Logger) UserSeeder {
 
 func FormatDSN(config config.DBHelper) string {
 	connectorConfig := mysql.Config{
-		User:   config.User,
-		Passwd: config.Password,
-		Net:    "unix",
-		Addr:   config.Socket,
+		User:                 config.User,
+		Passwd:               config.Password,
+		Net:                  "unix",
+		Addr:                 config.Socket,
+		AllowNativePasswords: true,
 	}
 	if config.SkipBinlog {
 		connectorConfig.Params = map[string]string{
